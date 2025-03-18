@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package protos.rimdesk.product.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service ProductService {
+    rpc ListProducts (ListProductsRequest) returns (ListProductsResponse);
+    rpc CreateProduct (CreateProductRequest) returns (CreateProductResponse);
+    rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+    rpc UpdateProduct (UpdateProductRequest) returns (UpdateProductResponse);
+    rpc DeleteProduct (DeleteProductRequest) returns (DeleteProductResponse);
+    rpc SearchWarehouse (SearchWarehouseRequest) returns (SearchWarehouseResponse);
+}
+
+message ListProductsRequest {
+}
+
+message ListProductsResponse {
+    repeated Product products = 1;
+}
+
+message CreateProductRequest {
+    ProductRequest product = 1;
+    repeated ProductRequest products = 2;
+}
+
+message CreateProductResponse {
+    Product product = 1;
+    repeated Product products = 2;
+    int32 created_count = 3;
+}
+
+message GetProductRequest {
+    string id = 1;
+}
+
+message GetProductResponse {
+    repeated Product product = 1;
+}
+
+message UpdateProductRequest {
+    string id = 1;
+    Product product = 2;
+}
+
+message UpdateProductResponse {
+    Product product = 1;
+}
+
+message DeleteProductRequest {
+    string id = 1;
+}
+
+message DeleteProductResponse {
+}
+
+message SearchWarehouseRequest {
+    string company_id = 1;
+}
+
+message SearchWarehouseResponse {
+     repeated Product product = 1;
+}
+
+message Product {
+    string id = 1;
+    string company_id = 2;
+    string name = 3;
+    string type = 4;
+    string category_id = 5;
+    string barcode = 6;
+    string description = 7;
+    float amount = 8;
+    float supply_price = 9;
+    float retail_price = 10;
+    google.protobuf.Timestamp created_at = 11;
+}
+
+message ProductRequest {
+    string company_id = 1;
+    string name = 2;
+    string type = 3;
+    string category_id = 4;
+    string barcode = 5;
+    string description = 6;
+    float amount = 7;
+    float supply_price = 8;
+    float retail_price = 9;
+}
+
+
+

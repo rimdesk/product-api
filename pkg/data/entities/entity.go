@@ -1,11 +1,14 @@
 package entities
 
 import (
+	"log"
+
 	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
+	productv1 "github.com/rimdesk/product-api/gen/protos/rimdesk/product/v1"
 	"github.com/rimdesk/product-api/pkg/data/domains"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
-	"log"
 )
 
 type Product struct {
@@ -33,4 +36,22 @@ func (p *Product) ToDomain() *domains.ProductDomain {
 func (p *Product) BeforeCreate(*gorm.DB) error {
 	p.ID = uuid.NewString()
 	return nil
+}
+
+func (i *Product) ToProto() *productv1.Product {
+	productDomain := new(productv1.Product)
+	if err := copier.Copy(productDomain, i); err != nil {
+		log.Println("failed to copy model to domain:", err)
+	}
+	productDomain.CreatedAt = timestamppb.New(i.CreatedAt)
+	return &productv1.Product{}
+}
+
+
+func NewProductFromRequest(request *productv1.ProductRequest) (*Product, error) {
+	newProduct := new(Product)
+	if err := copier.Copy(newProduct, request); err != nil {
+		return nil, err
+	}
+	return newProduct, nil
 }

@@ -38,7 +38,7 @@ func NewGormDatabase() Connection {
 }
 
 func (db *gormDB) ConnectDB() {
-	dbType := os.Getenv("DB.TYPE")
+	dbType := os.Getenv("DB_TYPE")
 	log.Println("Loading db config for: ", dbType)
 	var err error
 	switch dbType {
@@ -66,7 +66,7 @@ func (db *gormDB) ConnectDB() {
 }
 
 func (db *gormDB) LoadSqliteDB() (*gorm.DB, error) {
-	dbName := fmt.Sprintf("%s.db", os.Getenv("DB.NAME"))
+	dbName := fmt.Sprintf("%s.db", os.Getenv("DB_NAME"))
 	conn, err := gorm.Open(sqlite.Open(dbName), db.config)
 
 	if err != nil {
@@ -80,7 +80,7 @@ func (db *gormDB) LoadSqliteDB() (*gorm.DB, error) {
 
 func (db *gormDB) loadPostgresDB() (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("DB.HOST"), os.Getenv("DB.USER"), os.Getenv("DB.PASS"), os.Getenv("DB.NAME"), os.Getenv("DB.PORT"))
+		os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB.PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
 	var counts int64
 	var backOff = 1 * time.Second
 	var connection *gorm.DB
@@ -109,7 +109,7 @@ func (db *gormDB) loadPostgresDB() (*gorm.DB, error) {
 }
 
 func (db *gormDB) loadMysqlDB() (*gorm.DB, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", os.Getenv("DB.USER"), os.Getenv("DB.PASS"), os.Getenv("DB.HOST"), os.Getenv("DB.PORT"), os.Getenv("DB.NAME"))
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
 	conn, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")

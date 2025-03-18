@@ -1,108 +1,106 @@
 package service
 
 import (
-	"errors"
-	"github.com/gofiber/fiber/v2"
-	"github.com/rimdesk/product-api/pkg/clients"
-	"github.com/rimdesk/product-api/pkg/data/domains"
-	"github.com/rimdesk/product-api/pkg/data/dtos"
+	"context"
+	//"errors"
+
+	"connectrpc.com/connect"
+	productv1 "github.com/rimdesk/product-api/gen/protos/rimdesk/product/v1"
+
+	//"github.com/rimdesk/product-api/pkg/clients"
+	//"github.com/rimdesk/product-api/pkg/data/domains"
+	//"github.com/rimdesk/product-api/pkg/data/dtos"
+	"github.com/rimdesk/product-api/pkg/data/entities"
 	"github.com/rimdesk/product-api/pkg/data/repository"
 )
 
 type ProductService interface {
-	GetAllProducts(*fiber.Ctx, string) ([]*domains.ProductDomain, error)
-	GetProductById(*fiber.Ctx, string) (*domains.ProductDomain, error)
-	GetProductByCompanyAndId(*fiber.Ctx, string, string) (*domains.ProductDomain, error)
-	CreateProduct(*fiber.Ctx, string, *dtos.ProductDto) (*domains.ProductDomain, error)
-	UpdateProduct(*fiber.Ctx, string, string, *dtos.ProductDto) (*domains.ProductDomain, error)
-	DeleteProduct(*fiber.Ctx, string, string) error
-	SearchWarehouse(*fiber.Ctx, string, *dtos.ProductSearchDto) ([]*domains.ProductDomain, error)
+	ListProducts(ctx context.Context, request *connect.Request[productv1.ListProductsRequest]) (*productv1.ListProductsResponse, error)
+	CreateProduct(ctx context.Context, request *connect.Request[productv1.CreateProductRequest]) (*productv1.CreateProductResponse, error)
+	GetProduct(ctx context.Context, request *connect.Request[productv1.GetProductRequest]) (*productv1.GetProductResponse, error)
+	UpdateProduct(ctx context.Context, request *connect.Request[productv1.UpdateProductRequest]) (*productv1.UpdateProductResponse, error)
+	DeleteProduct(ctx context.Context, request *connect.Request[productv1.DeleteProductRequest]) (*productv1.DeleteProductResponse, error)
+	SearchWarehouse(ctx context.Context, request *connect.Request[productv1.SearchWarehouseRequest]) (*productv1.SearchWarehouseResponse, error)
 }
 
 type productService struct {
 	productRepository repository.ProductRepository
-	warehouseClient   clients.WarehouseClient
+	//warehouseClient   clients.WarehouseClient
 }
 
-func (service *productService) GetProductByCompanyAndId(ctx *fiber.Ctx, s string, s2 string) (*domains.ProductDomain, error) {
-	entity, err := service.productRepository.FindByCompanyIdAndId(s, s2)
+
+func NewProductService(productRepository repository.ProductRepository) ProductService {
+	return &productService{productRepository: productRepository}
+}
+//TO DO
+func (service *productService) ListProducts(ctx context.Context, request *connect.Request[productv1.ListProductsRequest]) (*productv1.ListProductsResponse, error) {
+	products, err := service.productRepository.FindAll(request.Msg.String())
 	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	productProtos := make([]*productv1.Product, len(products))
+	for _, product := range products {
+		productProtos = append(productProtos, product.ToProto())
+	}
+
+	return &productv1.ListProductsResponse{Products: productProtos}, nil
+}
+
+
+func (service *productService) GetProduct(ctx context.Context, request *connect.Request[productv1.GetProductRequest]) (*productv1.GetProductResponse, error) {
+	if _,err := service.productRepository.FindById(request.Msg.GetId()); err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	return &productv1.GetProductResponse{}, nil
+}
+
+func (service *productService) CreateProduct(ctx context.Context, request *connect.Request[productv1.CreateProductRequest]) (*productv1.CreateProductResponse, error) {
+	inventory, err := entities.NewProductFromRequest(request.Msg.GetProduct())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if err := service.productRepository.Create(inventory); err != nil {
 		return nil, err
 	}
 
-	productDomain := entity.ToDomain()
-	return productDomain, nil
+	return &productv1.CreateProductResponse{}, nil
 }
 
-func NewProductService(productRepository repository.ProductRepository, client clients.WarehouseClient) ProductService {
-	return &productService{productRepository: productRepository, warehouseClient: client}
-}
 
-func (service *productService) GetAllProducts(ctx *fiber.Ctx, companyID string) ([]*domains.ProductDomain, error) {
-	products, err := service.productRepository.FindAll(companyID)
+func (service *productService) UpdateProduct(ctx context.Context, request *connect.Request[productv1.UpdateProductRequest]) (*productv1.UpdateProductResponse, error) {
+
+	companyID := request.Msg.Id
+	product, err := service.productRepository.FindById(companyID)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
-	productDomains := make([]*domains.ProductDomain, 0)
-	for _, entity := range products {
-		productDomains = append(productDomains, entity.ToDomain())
-	}
-
-	return productDomains, nil
-}
-
-func (service *productService) GetProductById(ctx *fiber.Ctx, id string) (*domains.ProductDomain, error) {
-	entity, err := service.productRepository.FindById(id)
-	if err != nil {
-		return nil, err
-	}
-
-	productDomain := entity.ToDomain()
-	return productDomain, nil
-}
-
-func (service *productService) CreateProduct(ctx *fiber.Ctx, companyID string, dto *dtos.ProductDto) (*domains.ProductDomain, error) {
-	product := dto.ToEntity()
-	product.CompanyID = companyID
-
-	err := service.productRepository.Create(product)
-	if err != nil {
-		return nil, err
-	}
-
-	return product.ToDomain(), nil
-}
-
-func (service *productService) UpdateProduct(ctx *fiber.Ctx, companyID string, id string, dto *dtos.ProductDto) (*domains.ProductDomain, error) {
-	product, err := service.productRepository.FindById(id)
-	if err != nil {
-		return nil, err
-	}
-
-	dto.CopyToEntity(product)
 	if err := service.productRepository.Update(product); err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return product.ToDomain(), nil
+	return &productv1.UpdateProductResponse{}, nil
 }
 
-func (service *productService) DeleteProduct(ctx *fiber.Ctx, companyID string, id string) error {
-	entity, err := service.productRepository.FindById(id)
+func (service *productService) DeleteProduct(ctx context.Context, request *connect.Request[productv1.DeleteProductRequest]) (*productv1.DeleteProductResponse, error) {
+	productID := request.Msg.GetId()
+
+	product, err := service.productRepository.FindById(productID)
 	if err != nil {
-		return err
+		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 
-	if companyID != entity.CompanyID {
-		return errors.New("you are not the resource owner")
+	if err := service.productRepository.Delete(product); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return service.productRepository.Delete(entity)
+	return nil, err
 }
 
-func (service *productService) SearchWarehouse(ctx *fiber.Ctx, companyID string, params *dtos.ProductSearchDto) ([]*domains.ProductDomain, error) {
-	_, err := service.warehouseClient.GetById(ctx, params.WarehouseID)
+func (service *productService) SearchWarehouse(ctx context.Context, request *connect.Request[productv1.SearchWarehouseRequest]) (*productv1.SearchWarehouseResponse, error) {
+	_, err := service.productRepository.FindById(request.Msg.CompanyId)	
 	if err != nil {
 		return nil, err
 	}

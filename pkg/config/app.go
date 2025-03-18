@@ -33,7 +33,7 @@ func (*appConfig) LoadEnv() {
 func (*appConfig) AppConfig() fiber.Config {
 	return fiber.Config{
 		Prefork:                      false,
-		ServerHeader:                 os.Getenv("APP.NAME"),
+		ServerHeader:                 os.Getenv("APP_NAME"),
 		StrictRouting:                false,
 		CaseSensitive:                false,
 		Immutable:                    false,
@@ -58,7 +58,7 @@ func (*appConfig) AppConfig() fiber.Config {
 		DisableDefaultContentType:    false,
 		DisableHeaderNormalizing:     false,
 		DisableStartupMessage:        false,
-		AppName:                      os.Getenv("APP.NAME"),
+		AppName:                      os.Getenv("APP_NAME"),
 		StreamRequestBody:            false,
 		DisablePreParseMultipartForm: false,
 		ReduceMemoryUsage:            false,

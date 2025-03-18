@@ -2,20 +2,24 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/rimdesk/product-api/pkg/clients"
-	"github.com/rimdesk/product-api/pkg/config"
-	"github.com/rimdesk/product-api/pkg/controllers"
-	"github.com/rimdesk/product-api/pkg/data/repository"
-	"github.com/rimdesk/product-api/pkg/database"
-	"github.com/rimdesk/product-api/pkg/router"
-	"github.com/rimdesk/product-api/pkg/service"
-	"gorm.io/gorm"
+	"net/http"
+
 	"log"
 	"os"
+
+	"connectrpc.com/grpcreflect"
+	"github.com/rimdesk/product-api/gen/protos/rimdesk/product/v1/productv1connect"
+
+	"github.com/rimdesk/product-api/pkg/config"
+
+	"github.com/rimdesk/product-api/pkg/data/repository"
+	"github.com/rimdesk/product-api/pkg/database"
+	
+	"github.com/rimdesk/product-api/pkg/server"
+	"github.com/rimdesk/product-api/pkg/service"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+	"gorm.io/gorm"
 )
 
 var (
@@ -32,21 +36,25 @@ func init() {
 func main() {
 	serverAddr := fmt.Sprintf(":%s", os.Getenv("APP.PORT"))
 	dbEngine := db.GetEngine().(*gorm.DB)
-	app := fiber.New(cfg.AppConfig())
-	app.Use(cors.New())
-	app.Use(requestid.New())
 
-	warehouseClient := clients.NewWarehouseClient()
+	inventoryRepository := repository.NewProductRepository(dbEngine)
+	inventoryService := service.NewProductService(inventoryRepository)
+	walletServer := server.NewProductServer(inventoryService)
 
-	productRepository := repository.NewProductRepository(dbEngine)
-	productService := service.NewProductService(productRepository, warehouseClient)
-	productController := controllers.NewProductController(productService, validator.New())
-	rtr := router.NewFiberRouter(app, productController)
-	rtr.ApiR0utes()
+	mux := http.NewServeMux()
+	reflector := grpcreflect.NewStaticReflector(productv1connect.ProductServiceName)
+	mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	mux.Handle(productv1connect.NewProductServiceHandler(walletServer))
 
-	log.Println("REST server started on addr:", serverAddr)
-	if err := app.Listen(serverAddr); err != nil {
-		log.Println("failed to listen on addr:", serverAddr)
+	// Start the server
+	log.Printf("Starting server on %s...", serverAddr)
+	err := http.ListenAndServe(
+		serverAddr,
+		h2c.NewHandler(mux, &http2.Server{}), // Use h2c for HTTP/2 without TLS
+	)
+	if err != nil {
+		log.Printf("Failed to start server: %v", err)
 		os.Exit(1)
 	}
 }
