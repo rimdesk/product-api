@@ -80,7 +80,7 @@ func (db *gormDB) LoadSqliteDB() (*gorm.DB, error) {
 
 func (db *gormDB) loadPostgresDB() (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB.PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
+		os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
 	var counts int64
 	var backOff = 1 * time.Second
 	var connection *gorm.DB
