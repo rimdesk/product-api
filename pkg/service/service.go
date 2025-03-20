@@ -13,12 +13,16 @@ import (
 
 
 type productService struct {
+	contextHelper       types.ContextHelper
 	productRepository types.ProductRepository
 }
 
 
-func NewProductService(productRepository types.ProductRepository) types.ProductService {
-	return &productService{productRepository: productRepository}
+func NewProductService(productRepository types.ProductRepository, contextHelper types.ContextHelper) types.ProductService {
+	return &productService{
+		productRepository: productRepository,
+		contextHelper:       contextHelper,
+	}
 }
 
 func (service *productService) ListProducts(ctx context.Context, request *connect.Request[productv1.ListProductsRequest]) ([]*productv1.Product, error) {

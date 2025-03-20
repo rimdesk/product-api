@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gofiber/fiber/v2"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -43,12 +44,15 @@ func GetAccessToken(ctx *fiber.Ctx) string {
 		return ""
 	}
 
-	return rawAccessToken
+	return rawAccessToken[0]
 }
 
 func IsAuthorizedJWT(ctx *fiber.Ctx) error {
 	var keycloakURL = fmt.Sprintf("%s/realms/%s", os.Getenv("KC.BASE_URL"), os.Getenv("KC.REALM"))
 	var clientID = os.Getenv("KC.CLIENT_ID")
+
+	log.Println("Keycloak BaseURL:", keycloakURL)
+	log.Println("Keycloak ClientID:", clientID)
 
 	rawAccessToken, ok := ctx.GetReqHeaders()["Authorization"]
 	if !ok {
@@ -75,7 +79,7 @@ func IsAuthorizedJWT(ctx *fiber.Ctx) error {
 	}
 	verifier := provider.Verifier(oidcConfig)
 
-	accessToken := strings.Split(rawAccessToken, " ")[1]
+	accessToken := strings.Split(rawAccessToken[0], " ")[1]
 	idToken, err := verifier.Verify(c, accessToken)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(err.Error())
