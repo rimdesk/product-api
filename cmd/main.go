@@ -23,8 +23,6 @@ import (
 var (
 	cfg = config.New()
 	db  = database.NewGormDatabase()
-
-	
 )
 
 func init() {

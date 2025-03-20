@@ -1,8 +1,12 @@
-# Use a Debian-based image instead of Alpine
-FROM golang:1.21 as builder
+# Start from golang base image
+FROM golang:alpine as builder
 
 # Add Maintainer info.
 LABEL maintainer="Joseph Akitoye <josephakitoye@gmail.com>"
+
+# Install git.
+# Git is required for fetching the dependencies.
+RUN apk update && apk add --no-cache git && apk add --no-cache bash && apk add build-base
 
 # Set the current working directory inside the container.
 WORKDIR /app
@@ -20,17 +24,14 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main cmd/*.go
 
 # Start a new stage from scratch
-FROM debian:stable-slim
-RUN apt-get update && apt-get install -y ca-certificates libsqlite3-0 && rm -rf /var/lib/apt/lists/*
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 
 # Copy the Pre-built binary file from the previous stage. Observe we also copied the .env file
 COPY --from=builder /app/main ./
-COPY --from=builder /app/.env.docker ./.env
-
-# Expose port to the outside world
-EXPOSE 8080
+COPY --from=builder /app/templates/ ./templates/
 
 # Command to run the executable
 CMD ["./main"]
