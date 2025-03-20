@@ -94,9 +94,9 @@ func (authenticator *keycloakAuthenticator) ValidateTokenMiddleware(ctx context.
 
 // New creates a new OIDC authenticator using the given issuer URL and client configuration.
 func New() (types.ServiceAuthenticator, error) {
-	clientId := os.Getenv("KC.CLIENT_ID")
-	issuerUrl := os.Getenv("KC.URL")
-	url := fmt.Sprintf("%s/realms/%s", issuerUrl, os.Getenv("KC.REALM"))
+	clientId := os.Getenv("KC_CLIENT_ID")
+	issuerUrl := os.Getenv("KC_BASE_URL")
+	url := fmt.Sprintf("%s/realms/%s", issuerUrl, os.Getenv("KC_REALM"))
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
