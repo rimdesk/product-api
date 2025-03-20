@@ -2,38 +2,26 @@ package service
 
 import (
 	"context"
-	//"errors"
-
 	"connectrpc.com/connect"
-	productv1 "github.com/rimdesk/product-api/gen/protos/rimdesk/product/v1"
-
-	//"github.com/rimdesk/product-api/pkg/clients"
-	//"github.com/rimdesk/product-api/pkg/data/domains"
-	//"github.com/rimdesk/product-api/pkg/data/dtos"
+	"github.com/bufbuild/protovalidate-go"
+	"github.com/jinzhu/copier"
+	productv1 "github.com/rimdesk/product-api/gen/rimdesk/product/v1"
 	"github.com/rimdesk/product-api/pkg/data/entities"
-	"github.com/rimdesk/product-api/pkg/data/repository"
+	"github.com/rimdesk/product-api/pkg/types"
 )
 
-type ProductService interface {
-	ListProducts(ctx context.Context, request *connect.Request[productv1.ListProductsRequest]) (*productv1.ListProductsResponse, error)
-	CreateProduct(ctx context.Context, request *connect.Request[productv1.CreateProductRequest]) (*productv1.CreateProductResponse, error)
-	GetProduct(ctx context.Context, request *connect.Request[productv1.GetProductRequest]) (*productv1.GetProductResponse, error)
-	UpdateProduct(ctx context.Context, request *connect.Request[productv1.UpdateProductRequest]) (*productv1.UpdateProductResponse, error)
-	DeleteProduct(ctx context.Context, request *connect.Request[productv1.DeleteProductRequest]) (*productv1.DeleteProductResponse, error)
-	SearchWarehouse(ctx context.Context, request *connect.Request[productv1.SearchWarehouseRequest]) (*productv1.SearchWarehouseResponse, error)
-}
+
 
 type productService struct {
-	productRepository repository.ProductRepository
-	//warehouseClient   clients.WarehouseClient
+	productRepository types.ProductRepository
 }
 
 
-func NewProductService(productRepository repository.ProductRepository) ProductService {
+func NewProductService(productRepository types.ProductRepository) types.ProductService {
 	return &productService{productRepository: productRepository}
 }
-//TO DO
-func (service *productService) ListProducts(ctx context.Context, request *connect.Request[productv1.ListProductsRequest]) (*productv1.ListProductsResponse, error) {
+
+func (service *productService) ListProducts(ctx context.Context, request *connect.Request[productv1.ListProductsRequest]) ([]*productv1.Product, error) {
 	products, err := service.productRepository.FindAll(request.Msg.String())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -44,66 +32,70 @@ func (service *productService) ListProducts(ctx context.Context, request *connec
 		productProtos = append(productProtos, product.ToProto())
 	}
 
-	return &productv1.ListProductsResponse{Products: productProtos}, nil
+	return productProtos, nil
 }
 
 
-func (service *productService) GetProduct(ctx context.Context, request *connect.Request[productv1.GetProductRequest]) (*productv1.GetProductResponse, error) {
-	if _,err := service.productRepository.FindById(request.Msg.GetId()); err != nil {
+func (service *productService) GetProduct(ctx context.Context, request *connect.Request[productv1.GetProductRequest]) (*productv1.Product, error) {
+	 product,err := service.productRepository.FindById(request.Msg.GetId()); 
+	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	return &productv1.GetProductResponse{}, nil
+	return product.ToProto(), nil
 }
 
-func (service *productService) CreateProduct(ctx context.Context, request *connect.Request[productv1.CreateProductRequest]) (*productv1.CreateProductResponse, error) {
-	inventory, err := entities.NewProductFromRequest(request.Msg.GetProduct())
+func (service *productService) CreateProduct(ctx context.Context, request *connect.Request[productv1.CreateProductRequest]) (*productv1.Product, error) {
+	productRequest := request.Msg.GetProduct()
+
+	if err := protovalidate.Validate(productRequest); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	product, err := entities.NewProductFromRequest(productRequest)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	if err := service.productRepository.Create(inventory); err != nil {
-		return nil, err
+	if err := service.productRepository.Create(product); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return &productv1.CreateProductResponse{}, nil
+	return product.ToProto(), nil
 }
 
 
-func (service *productService) UpdateProduct(ctx context.Context, request *connect.Request[productv1.UpdateProductRequest]) (*productv1.UpdateProductResponse, error) {
+func (service *productService) UpdateProduct(ctx context.Context, request *connect.Request[productv1.UpdateProductRequest]) (*productv1.Product, error) {
 
-	companyID := request.Msg.Id
-	product, err := service.productRepository.FindById(companyID)
+	product, err := service.productRepository.FindById(request.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+
+	productRequest := request.Msg.GetProduct()
+	if err := protovalidate.Validate(productRequest); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if err := copier.Copy(product, productRequest); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	if err := service.productRepository.Update(product); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return &productv1.UpdateProductResponse{}, nil
+	return product.ToProto(), nil
 }
 
-func (service *productService) DeleteProduct(ctx context.Context, request *connect.Request[productv1.DeleteProductRequest]) (*productv1.DeleteProductResponse, error) {
-	productID := request.Msg.GetId()
-
-	product, err := service.productRepository.FindById(productID)
+func (service *productService) DeleteProduct(ctx context.Context, request *connect.Request[productv1.DeleteProductRequest]) error {
+	product, err := service.productRepository.FindById(request.Msg.GetId())
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, err)
 	}
 
 	if err := service.productRepository.Delete(product); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return connect.NewError(connect.CodeInternal, err)
 	}
 
-	return nil, err
+	return nil
 }
 
-func (service *productService) SearchWarehouse(ctx context.Context, request *connect.Request[productv1.SearchWarehouseRequest]) (*productv1.SearchWarehouseResponse, error) {
-	_, err := service.productRepository.FindById(request.Msg.CompanyId)	
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}

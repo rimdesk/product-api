@@ -1,0 +1,39 @@
+name: Deploy Microservice
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: registry.sys.rimdesk.com/product-api
+  IMAGE_TAG: ${{ github.sha }}
+  CONTAINER_NAME: product-api
+  CONTAINER_PORT: 8080
+  HOST_PORT: 8080
+  NETWORK: docker-configuration_backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
+          # echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker pull ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            docker stop ${{ env.CONTAINER_NAME }} || true
+            docker rm ${{ env.CONTAINER_NAME }} || true
+            docker run -d --name ${{ env.CONTAINER_NAME }} --network ${{ env.NETWORK }} ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}

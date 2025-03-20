@@ -1,1 +1,7 @@
-version: v1
+version: v2
+modules:
+  - path: proto
+    name: buf.build/rimdesk/product-api
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/bufbuild/protovalidate

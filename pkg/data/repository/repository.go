@@ -3,16 +3,9 @@ package repository
 import (
 	"github.com/rimdesk/product-api/pkg/data/entities"
 	"gorm.io/gorm"
+	"github.com/rimdesk/product-api/pkg/types"
 )
 
-type ProductRepository interface {
-	FindAll(string) ([]*entities.Product, error)
-	FindById(id string) (*entities.Product, error)
-	FindByCompanyIdAndId(string, string) (*entities.Product, error)
-	Create(*entities.Product) error
-	Update(*entities.Product) error
-	Delete(*entities.Product) error
-}
 
 type productRepository struct {
 	store *gorm.DB
@@ -24,7 +17,7 @@ func (repository *productRepository) FindByCompanyIdAndId(companyId string, id s
 	return &product, err
 }
 
-func NewProductRepository(db *gorm.DB) ProductRepository {
+func NewProductRepository(db *gorm.DB) types.ProductRepository {
 	return &productRepository{store: db}
 }
 
