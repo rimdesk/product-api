@@ -1,8 +1,9 @@
 syntax = "proto3";
 
-package protos.rimdesk.product.v1;
+package rimdesk.product.v1;
 
 import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
 
 service ProductService {
     rpc ListProducts (ListProductsRequest) returns (ListProductsResponse);
@@ -10,7 +11,6 @@ service ProductService {
     rpc GetProduct(GetProductRequest) returns (GetProductResponse);
     rpc UpdateProduct (UpdateProductRequest) returns (UpdateProductResponse);
     rpc DeleteProduct (DeleteProductRequest) returns (DeleteProductResponse);
-    rpc SearchWarehouse (SearchWarehouseRequest) returns (SearchWarehouseResponse);
 }
 
 message ListProductsRequest {
@@ -36,12 +36,12 @@ message GetProductRequest {
 }
 
 message GetProductResponse {
-    repeated Product product = 1;
+     Product product = 1;
 }
 
 message UpdateProductRequest {
     string id = 1;
-    Product product = 2;
+    ProductRequest product = 2;
 }
 
 message UpdateProductResponse {
@@ -55,13 +55,6 @@ message DeleteProductRequest {
 message DeleteProductResponse {
 }
 
-message SearchWarehouseRequest {
-    string company_id = 1;
-}
-
-message SearchWarehouseResponse {
-     repeated Product product = 1;
-}
 
 message Product {
     string id = 1;
@@ -78,15 +71,15 @@ message Product {
 }
 
 message ProductRequest {
-    string company_id = 1;
-    string name = 2;
-    string type = 3;
-    string category_id = 4;
-    string barcode = 5;
-    string description = 6;
-    float amount = 7;
-    float supply_price = 8;
-    float retail_price = 9;
+    string company_id = 1 [(buf.validate.field).required = true];
+    string name = 2 [(buf.validate.field).required = true];
+    string type = 3 [(buf.validate.field).required = true];
+    string category_id = 4 [(buf.validate.field).required = true];
+    string barcode = 5 [(buf.validate.field).required = true];
+    string description = 6 [(buf.validate.field).required = true];
+    float amount = 7 [(buf.validate.field).required = true];
+    float supply_price = 8 [(buf.validate.field).required = true];
+    float retail_price = 9 [(buf.validate.field).required = true];
 }
 
 
